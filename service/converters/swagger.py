@@ -3,6 +3,7 @@ from utils.name import camel_to_snake
 from service.api import Group, Api, ReqParam
 from service.converters.base import BaseConverter
 import requests
+import yaml
 
 
 def dash_to_snake(name: str) -> str:
@@ -10,17 +11,10 @@ def dash_to_snake(name: str) -> str:
 
 
 class SwaggerConverter(BaseConverter):
-    endpoint = None
     groups = []
-    path = '/v2/api-docs?group=rest'
 
-    def __init__(self, endpoint: str):
-        self.endpoint = endpoint
-        self._request_data()
-
-    def _request_data(self):
-        response = requests.get(self.endpoint + self.path)
-        self.data = response.json()
+    def __init__(self):
+        self.data = {}
 
     def convert(self) -> List[Group]:
         groups_dict = {}
@@ -52,7 +46,7 @@ class SwaggerConverter(BaseConverter):
             api.description = path_items['summary']
 
             # tags
-            for tag in path_items['tags']:
+            for tag in path_items.get('tags', []):
                 group_name = dash_to_snake(tag)
                 groups_dict[group_name].apis.append(api)
 
@@ -67,7 +61,7 @@ class SwaggerConverter(BaseConverter):
                     req_param = ReqParam()
                     req_param.label = parameter['name']
                     req_param.name = camel_to_snake(parameter['name'])
-                    req_param.required = parameter['required']
+                    req_param.required = parameter.get('required', False)
                     req_param.description = parameter['description']
                     req_param.type = parameter['type']
                     req_param.position = parameter['in']
@@ -76,7 +70,13 @@ class SwaggerConverter(BaseConverter):
         return list(groups_dict.values())
 
     def _combine_params(self, ref_string: str, position: str) -> List[ReqParam]:
-
+        """
+        将$ref中分散的参数拼接成完整的json
+        TODO: API获取的和yaml文件的拼接方式不一致，需要进行针对性处理
+        :param ref_string:
+        :param position:
+        :return:
+        """
         definition_key = ref_string.split('/')[-1]
         swagger_param = self.data['definitions'][definition_key]
 
@@ -97,3 +97,29 @@ class SwaggerConverter(BaseConverter):
             req_param.position = position
             params.append(req_param)
         return params
+
+
+class SwaggerApiConverter(SwaggerConverter):
+    endpoint = None
+    groups = []
+    path = '/v2/api-docs?group=rest'
+
+    def __init__(self, endpoint: str):
+        super().__init__()
+        self.endpoint = endpoint
+        self._request_data()
+
+    def _request_data(self):
+        response = requests.get(self.endpoint + self.path)
+        self.data = response.json()
+
+
+class SwaggerYmlConverter(SwaggerConverter):
+    def __init__(self, yml_folder: str):
+        super().__init__()
+        self.yml_folder = yml_folder
+        self._open_file()
+
+    def _open_file(self):
+        with open(f'{self.yml_folder}', 'r') as f:
+            self.data = yaml.load(f, yaml.Loader)

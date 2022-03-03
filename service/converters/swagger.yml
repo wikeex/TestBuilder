@@ -1,0 +1,1177 @@
+swagger: "2.0"
+info:
+  title: meat行情数据服务API文档
+  description: 手动编写的接口文档
+  version: 1.0.0
+tags:
+  - name: "default"
+    description: "通用接口"
+  - name: "spot"
+    description: "现货"
+  - name: "spot_lever"
+    description: "现货杠杆"
+  - name: "futures"
+    description: "U本位合约"
+  - name: "coin_futures"
+    description: "币本位合约"
+schemes:
+  - "http"
+paths:
+  /ping:
+    get:
+      summary: "立即返回服务端时间戳"
+      responses:
+        200:
+          description: "服务端响应成功"
+
+  /specification:
+    get:
+      summary: "获取业务字段说明"
+      responses:
+        "200":
+          description: "成功获取到字段说明"
+
+  /show/support:
+    get:
+      summary: "获取底层ws订阅的支持信息"
+      responses:
+        "200":
+          description: "返回获取到的服务支持信息"
+
+  /show/rest-support:
+    get:
+      summary: "获取REST接口的支持信息"
+      parameters:
+        - name: "isPrivate"
+          in: "query"
+          description: "是否为私有行情数据"
+          type: "boolean"
+          default: false
+      responses:
+        200:
+          description: "返回支持的REST信息"
+
+  /list/tasks/{com}:
+    get:
+      summary: "获取当前正在订阅处理的任务"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: integer
+        - name: "business"
+          in: "query"
+          description: "业务类别:spot,futures或者coin_futures"
+          required: true
+          type:  string
+        - name: "topic"
+          in: "query"
+          description: "数据类型:depth,trade,deal,position,或者order"
+          required: true
+          type: string
+      responses:
+        "200":
+          description: "获取到运行任务信息"
+
+  /stopTask/{com}/{business}/{symbol}/{topic}:
+    get:
+      summary: "停止某个运行中的任务"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: integer
+        - name: "business"
+          in: "path"
+          description: "业务类型"
+          required: true
+          type: string
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: string
+        - name: "topic"
+          in: "path"
+          description: "主题"
+          required: true
+          type: string
+      responses:
+        200:
+          description: "停止了某个订阅任务"
+        202:
+          description: "任务没有在运行，因此无法停止"
+
+  /spot/ws/depth/{com}/{symbol}:
+    get:
+      tags:
+        - "spot"
+      summary: "获取现货的WS深度数据"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: integer
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: string
+        - name: "size"
+          in: "query"
+          description: "深度档位"
+          required: false
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          description: "获取深度数据成功"
+        "202":
+          description: "没有查到WS深度数据，尝试创建新任务"
+        "404":
+          description: "获取WS深度数据失败"
+
+  /spot/ws/multi_depth:
+    post:
+      tags:
+        - "spot"
+      summary: "同时获取多个现货WS的深度数据"
+      parameters:
+        - name: "body"
+          in: "body"
+          description: "行情参数"
+          required: true
+          schema:
+            #  列表参数的表示
+            type: array
+            items:
+              $ref: "definitions.yml#/MarketParam"
+      responses:
+        "200":
+          description: "获取多个ws深度数据成功"
+        "204":
+          description: "没有查到WS深度数据，尝试创建所有订阅任务"
+        "206":
+          description: "只获取到部分ws深度数据，尝试创建部分订阅任务"
+        "404":
+          description: "获取WS深度数据失败"
+
+  /spot/ws/detail/{com}/{symbol}:
+    get:
+      tags:
+        - "spot"
+      summary: "获取现货的WS交易明细"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "limit"
+          in: "query"
+          description: "交易明细的最大数量"
+          required: false
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          description: "获取交易明细成功"
+        "202":
+          description: "没有查到WS交易明细，尝试创建新任务"
+        "404":
+          description: "获取WS交易明细失败"
+
+  /spot/rest/symbols/{com}:
+    get:
+      tags:
+        - "spot"
+      summary: "获取现货的币对信息"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: integer
+      responses:
+        200:
+          description: "获取币对信息成功"
+        500:
+          description: "获取币对信息失败"
+
+  /spot/rest/depth/{com}/{symbol}:
+    get:
+      tags:
+        - "spot"
+      summary: "获取现货的REST深度数据"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: integer
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "size"
+          in: "query"
+          description: "深度档位"
+          required: false
+          type: "integer"
+          format: "int64"
+        - name: "account"
+          in: header
+          description: "账号信息json格式化后的字符串"
+          required: false
+          type: string
+      responses:
+        "200":
+          description: "获取REST深度数据成功"
+        "500":
+          description: "获取REST深度数据失败"
+
+  /spot/rest/detail/{com}/{symbol}:
+    get:
+      tags:
+        - "spot"
+      summary: "获取现货的REST交易明细"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "limit"
+          in: "query"
+          description: "交易明细的最大数量"
+          required: false
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          description: "获取REST交易明细成功"
+        "500":
+          description: "获取REST交易明细失败"
+
+  /spot/rest/trade_rate/{com}/{symbol}:
+    post:
+      tags:
+        - "spot"
+      summary: "查询现货交易的手续费费率"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: integer
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: string
+        - name: "data"
+          in: "body"
+          description: "账号信息"
+          required: true
+          schema:
+            $ref: "definitions.yml#/AccountInfo"
+      responses:
+        200:
+          description: "获取REST手续费费率成功"
+        500:
+          description: "获取REST手续费费率失败"
+
+  /spot_lever/rest/all_levers/{com}:
+    post:
+      tags:
+        - "spot_lever"
+      summary: "获取所有现货杠杆的配置信息"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: integer
+        - name: "data"
+          in: "body"
+          description: "账号信息"
+          required: true
+          schema:
+            $ref: "definitions.yml#/AccountInfo"
+      responses:
+        200:
+          description: "获取所有杠杆配置信息成功"
+        500:
+          description: "获取所有杠杆配置信息失败"
+
+  /spot_lever/rest/lever_info/{com}/{symbol}:
+    post:
+      tags:
+        - "spot_lever"
+      summary: "获取现货杠杆的配置信息"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: integer
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: string
+        - name: "data"
+          in: "body"
+          description: "账号信息"
+          required: true
+          schema:
+            $ref: "definitions.yml#/AccountInfo"
+      responses:
+        200:
+          description: "获取杠杆配置信息成功"
+        500:
+          description: "获取杠杆配置信息失败"
+
+  /futures/ws/depth/{com}/{symbol}:
+    get:
+      tags:
+        - "futures"
+      summary: "获取合约WS的深度数据"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: integer
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: string
+        - name: "size"
+          in: "query"
+          description: "深度档位"
+          required: false
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          description: "获取深度数据成功"
+        "202":
+          description: "没有查到WS深度数据，尝试创建新任务"
+        "404":
+          description: "获取WS深度数据失败"
+
+  /futures/ws/multi_depth:
+    post:
+      tags:
+        - "futures"
+      summary: "同时获取多个合约WS的深度数据"
+      parameters:
+        - name: "body"
+          in: "body"
+          description: "行情参数"
+          required: true
+          schema:
+            #  列表参数的表示
+            type: array
+            items:
+              $ref: "definitions.yml#/MarketParam"
+      responses:
+        "200":
+          description: "获取多个ws深度数据成功"
+        "204":
+          description: "没有查到WS深度数据，尝试创建所有订阅任务"
+        "206":
+          description: "只获取到部分ws深度数据，尝试创建部分订阅任务"
+        "404":
+          description: "获取WS深度数据失败"
+
+  /futures/ws/detail/{com}/{symbol}:
+    get:
+      tags:
+        - "futures"
+      summary: "获取合约WS的交易明细"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "limit"
+          in: "query"
+          description: "交易明细的最大数量"
+          required: false
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          description: "获取交易明细成功"
+        "202":
+          description: "没有查到WS交易明细，尝试创建新任务"
+        "404":
+          description: "获取WS交易明细失败"
+
+  /futures/ws/funding_rate/{com}/{symbol}:
+    get:
+      tags:
+        - "futures"
+      summary: "查询合约的WS资金费率"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: integer
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: string
+      responses:
+        200:
+          description: "获取资金费率成功"
+        202:
+          description: "没有查到WS资金费率，尝试创建新任务"
+        404:
+          description: "获取WS资金费率失败"
+        500:
+          description: "获取REST资金费率失败"
+
+  /futures/ws/user_deal/{com}/{symbol}:
+    parameters:
+      - name: "com"
+        in: "path"
+        description: "交易所代号"
+        required: true
+        type: "integer"
+        format: "int64"
+      - name: "symbol"
+        in: "path"
+        description: "交易对名称"
+        required: true
+        type: "string"
+      - name: "data"
+        in: "body"
+        description: "账号信息"
+        required: true
+        schema:
+          $ref: "definitions.yml#/AccountInfo"
+    post:
+      tags:
+        - "futures"
+      summary: "获取合约WS的用户成交单"
+      responses:
+        "200":
+          description: "获取WS用户成交单数据成功"
+        "202":
+          description: "没有查到WS用户成交单数据，尝试创建新任务"
+        "404":
+          description: "获取WS用户成交单数据失败"
+    patch:
+      tags:
+        - "futures"
+      summary: "获取合约WS中未查询的用户成交单"
+      responses:
+        "200":
+          description: "获取WS用户成交单数据成功"
+        "202":
+          description: "没有查到WS用户成交单数据，尝试创建新任务"
+        "203":
+          description: "WS用户成交单数据还没有更新"
+        "404":
+          description: "获取WS用户成交单数据失败"
+
+  /futures/ws/user_position/{com}/{symbol}:
+    post:
+      tags:
+        - "futures"
+      summary: "获取合约WS的用户头寸数据"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "data"
+          in: "body"
+          description: "账号信息"
+          required: true
+          schema:
+            $ref: "definitions.yml#/AccountInfo"
+      responses:
+        "200":
+          description: "获取WS用户头寸数据成功"
+        "202":
+          description: "没有查到WS用户头寸数据，尝试创建新任务"
+        "401":
+          description: "用户头寸数据检验不合格"
+        "404":
+          description: "获取WS用户头寸数据失败"
+
+  /futures/ws/open_order/{com}/{symbol}:
+    post:
+      tags:
+        - "futures"
+      summary: "获取合约WS的未结束的用户订单"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "data"
+          in: "body"
+          description: "账号信息"
+          required: true
+          schema:
+            $ref: "definitions.yml#/AccountInfo"
+      responses:
+        "200":
+          description: "获取WS用户订单数据成功"
+        "202":
+          description: "没有查到WS用户订单数据，尝试创建新任务"
+        "401":
+          description: "用户订单数据检验不合格"
+        "404":
+          description: "获取WS用户订单数据失败"
+
+  /futures/ws/order/{com}/{symbol}:
+    post:
+      tags:
+        - "futures"
+      summary: "根据订单id或者自定义id批量查询合约WS的用户订单数据"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "oids"
+          in: "query"
+          description: "订单id拼接的字符串，以,连接"
+          type: "string"
+          required: false
+        - name: "cids"
+          in: "query"
+          description: "订单自定义id拼接的字符串，以,连接"
+          type: "string"
+          required: false
+        - name: "data"
+          in: "body"
+          description: "账号信息"
+          required: true
+          schema:
+            $ref: "definitions.yml#/AccountInfo"
+      responses:
+        "200":
+          description: "获取WS用户订单数据成功"
+        "202":
+          description: "没有查到WS用户订单数据，尝试创建新任务"
+        "401":
+          description: "用户订单数据检验不合格"
+        "404":
+          description: "获取WS用户订单数据失败"
+
+  /futures/rest/symbols/{com}:
+    get:
+      tags:
+        - "futures"
+      summary: "获取合约的币对信息"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: integer
+      responses:
+        200:
+          description: "获取币对信息成功"
+        500:
+          description: "获取币对信息失败"
+
+  /futures/rest/depth/{com}/{symbol}:
+    get:
+      tags:
+        - "futures"
+      summary: "获取合约的REST深度数据"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: integer
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "size"
+          in: "query"
+          description: "深度档位"
+          required: false
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          description: "获取REST深度数据成功"
+        "500":
+          description: "获取REST深度数据失败"
+
+  /futures/rest/detail/{com}/{symbol}:
+    get:
+      tags:
+        - "futures"
+      summary: "获取合约的REST交易明细"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "limit"
+          in: "query"
+          description: "交易明细的最大数量"
+          required: false
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          description: "获取REST交易明细成功"
+        "500":
+          description: "获取REST交易明细失败"
+
+  /futures/rest/funding_rate/{com}/{symbol}:
+    get:
+      tags:
+        - "futures"
+      summary: "查询合约的REST资金费率"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: integer
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: string
+      responses:
+        200:
+          description: "获取REST资金费率成功"
+        500:
+          description: "获取REST资金费率失败"
+
+  /futures/rest/trade_rate/{com}/{symbol}:
+    post:
+      tags:
+        - "futures"
+      summary: "查询合约的手续费费率"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: integer
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: string
+        - name: "data"
+          in: "body"
+          description: "账号信息"
+          required: true
+          schema:
+            $ref: "definitions.yml#/AccountInfo"
+      responses:
+        200:
+          description: "获取REST手续费费率成功"
+        500:
+          description: "获取REST手续费费率失败"
+
+  /futures/rest/open_order/{com}/{symbol}:
+    post:
+      tags:
+        - "futures"
+      summary: "获取合约REST未结束的用户订单数据"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "data"
+          in: "body"
+          description: "账号信息"
+          required: true
+          schema:
+            $ref: "definitions.yml#/AccountInfo"
+      responses:
+        "200":
+          description: "获取REST用户订单数据成功"
+        "500":
+          description: "获取REST用户订单数据失败"
+
+  /futures/rest/order/{com}/{symbol}:
+    post:
+      tags:
+        - "futures"
+      summary: "根据订单id或者自定义id批量查询合约REST的用户订单数据"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "oids"
+          in: "query"
+          description: "订单id拼接的字符串，以,连接"
+          type: "string"
+          required: false
+        - name: "cids"
+          in: "query"
+          description: "订单自定义id拼接的字符串，以,连接。注意:MXC只支持传入1个自定义id"
+          type: "string"
+          required: false
+        - name: "data"
+          in: "body"
+          description: "账号信息"
+          required: true
+          schema:
+            $ref: "definitions.yml#/AccountInfo"
+      responses:
+        "200":
+          description: "获取REST用户订单数据成功"
+        "500":
+          description: "获取REST用户订单数据失败"
+
+  /coin_futures/ws/depth/{com}/{symbol}:
+    get:
+      tags:
+        - "coin_futures"
+      summary: "获取币本位合约的WS深度数据"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "size"
+          in: "query"
+          description: "深度档位"
+          required: false
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          description: "获取深度数据成功"
+        "202":
+          description: "没有查到WS深度数据，尝试创建新任务"
+        "404":
+          description: "获取WS深度数据失败"
+
+  /coin_futures/ws/multi_depth:
+    post:
+      tags:
+        - "coin_futures"
+      summary: "同时获取多个币本位合约WS的深度数据"
+      parameters:
+        - name: "body"
+          in: "body"
+          description: "行情参数"
+          required: true
+          schema:
+            #  列表参数的表示
+            type: array
+            items:
+              $ref: "definitions.yml#/MarketParam"
+      responses:
+        "200":
+          description: "获取多个ws深度数据成功"
+        "204":
+          description: "没有查到WS深度数据，尝试创建所有订阅任务"
+        "206":
+          description: "只获取到部分ws深度数据，尝试创建部分订阅任务"
+        "404":
+          description: "获取WS深度数据失败"
+
+  /coin_futures/ws/detail/{com}/{symbol}:
+    get:
+      tags:
+        - "coin_futures"
+      summary: "获取币本位合约的WS交易明细"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "limit"
+          in: "query"
+          description: "交易明细的最大数量"
+          required: false
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          description: "获取交易明细成功"
+        "202":
+          description: "没有查到WS交易明细，尝试创建新任务"
+        "404":
+          description: "获取WS交易明细失败"
+
+  /coin_futures/ws/open_order/{com}/{symbol}:
+    post:
+      tags:
+        - "coin_futures"
+      summary: "获取币本位合约WS的未结束的用户订单"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "data"
+          in: "body"
+          description: "账号信息"
+          required: true
+          schema:
+            $ref: "definitions.yml#/AccountInfo"
+      responses:
+        "200":
+          description: "获取WS用户订单数据成功"
+        "202":
+          description: "没有查到WS用户订单数据，尝试创建新任务"
+        "401":
+          description: "用户订单数据检验不合格"
+        "404":
+          description: "获取WS用户订单数据失败"
+
+  /coin_futures/ws/order/{com}/{symbol}:
+    post:
+      tags:
+        - "coin_futures"
+      summary: "根据订单id或者自定义id批量查询币本位合约WS的用户订单数据"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "oids"
+          in: "query"
+          description: "订单id拼接的字符串，以,连接"
+          type: "string"
+          required: false
+        - name: "cids"
+          in: "query"
+          description: "订单自定义id拼接的字符串，以,连接"
+          type: "string"
+          required: false
+        - name: "data"
+          in: "body"
+          description: "账号信息"
+          required: true
+          schema:
+            $ref: "definitions.yml#/AccountInfo"
+      responses:
+        "200":
+          description: "获取WS用户订单数据成功"
+        "202":
+          description: "没有查到WS用户订单数据，尝试创建新任务"
+        "401":
+          description: "用户订单数据检验不合格"
+        "404":
+          description: "获取WS用户订单数据失败"
+
+  /coin_futures/rest/depth/{com}/{symbol}:
+    get:
+      tags:
+        - "coin_futures"
+      summary: "获取币本位合约的REST深度数据"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "size"
+          in: "query"
+          description: "深度档位"
+          required: false
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          description: "获取REST深度数据成功"
+        "500":
+          description: "获取REST深度数据失败"
+
+  /coin_futures/rest/detail/{com}/{symbol}:
+    get:
+      tags:
+        - "coin_futures"
+      summary: "获取币本位合约的REST交易明细"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "limit"
+          in: "query"
+          description: "交易明细的最大数量"
+          required: false
+          type: "integer"
+          format: "int64"
+      responses:
+        "200":
+          description: "获取REST交易明细成功"
+        "500":
+          description: "获取REST交易明细失败"
+
+  /coin_futures/rest/open_order/{com}/{symbol}:
+    post:
+      tags:
+        - "coin_futures"
+      summary: "获取币本位合约REST未结束的用户订单数据"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "data"
+          in: "body"
+          description: "账号信息"
+          required: true
+          schema:
+            $ref: "definitions.yml#/AccountInfo"
+      responses:
+        "200":
+          description: "获取REST用户订单数据成功"
+        "500":
+          description: "获取REST用户订单数据失败"
+
+  /coin_futures/rest/order/{com}/{symbol}:
+    post:
+      tags:
+        - "coin_futures"
+      summary: "根据订单id或者自定义id批量查询币本位合约REST的用户订单数据"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: "integer"
+          format: "int64"
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: "string"
+        - name: "oids"
+          in: "query"
+          description: "订单id拼接的字符串，以,连接"
+          type: "string"
+          required: false
+        - name: "cids"
+          in: "query"
+          description: "订单自定义id拼接的字符串，以,连接。注意:MXC只支持传入1个自定义id"
+          type: "string"
+          required: false
+        - name: "data"
+          in: "body"
+          description: "账号信息"
+          required: true
+          schema:
+            $ref: "definitions.yml#/AccountInfo"
+      responses:
+        "200":
+          description: "获取REST用户订单数据成功"
+        "500":
+          description: "获取REST用户订单数据失败"
+
+  /job/list/all:
+    get:
+      tags:
+        - "job"
+      summary: "全部订阅任务的统计"
+      parameters:
+        - name: "isPrivate"
+          in: query
+          type: boolean
+          default: false
+          description: "是否为私有订阅"
+        - name: withRawData
+          in: query
+          type: boolean
+          default: false
+          description: "是否需要返回订阅任务详情"
+      responses:
+        200:
+          description: "订阅任务统计完成"
+        500:
+          description: "订阅任务统计出错"
+
+  /job/stop/{com}/{business}/{symbol}/{topic}:
+    get:
+      tags:
+        - "job"
+      summary: "停止某个运行中的任务"
+      parameters:
+        - name: "com"
+          in: "path"
+          description: "交易所代号"
+          required: true
+          type: integer
+        - name: "business"
+          in: "path"
+          description: "业务类型"
+          required: true
+          type: string
+        - name: "symbol"
+          in: "path"
+          description: "交易对名称"
+          required: true
+          type: string
+        - name: "topic"
+          in: "path"
+          description: "主题"
+          required: true
+          type: string
+      responses:
+        200:
+          description: "停止了某个订阅任务"
+        202:
+          description: "任务没有在运行，因此无法停止"
+
+  /cron/stop-idle:
+    get:
+      tags:
+        - "cron"
+      summary: "停止闲置任务"
+      parameters:
+        - name: withRawData
+          in: query
+          type: boolean
+          default: true
+          description: "是否需要返回停止任务的详情"
+      responses:
+        200:
+          description: "闲置任务停止已经处理完成"
+        500:
+          description: "闲置任务停止过程出错！"
+
+  /cron/balance:
+    get:
+      tags:
+        - "cron"
+      summary: "均匀分配任务到各个进程"
+      responses:
+        200:
+          description: "任务均衡处理已经完成"
+        500:
+          description: "任务均衡处理过程出错！"
